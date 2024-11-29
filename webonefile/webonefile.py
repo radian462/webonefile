@@ -6,7 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 
 
-def webonefile(url: str, headers: dict = {}, proxies: dict = {}) -> str:
+def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
     logger = getLogger("Webonefile")
     handler = StreamHandler()
     logger.setLevel(INFO)
@@ -16,32 +16,39 @@ def webonefile(url: str, headers: dict = {}, proxies: dict = {}) -> str:
 
     base_url = urlparse(url).scheme + "://" + urlparse(url).netloc
 
-    r = requests.get(url, headers=headers)
+    r = requests.get(url, headers=headers or {}, proxies=proxies or {})
     soup = BeautifulSoup(r.text, "html.parser")
-    
+
     for src in soup.find_all(src=True):
-        if src['src']:
-            src_parsed = urlparse(src['src'])
+        if src["src"]:
+            src_parsed = urlparse(src["src"])
             if (src_parsed.scheme and src_parsed.netloc) or src_parsed.path:
                 if src_parsed.scheme and src_parsed.netloc:
-                    src_url = src['src']
-                elif src['src'].startswith("//"):
-                    final_url = requests.head(url, allow_redirects=True).url
-                    scr_scheme = 'https' if final_url.startswith('https://') else 'http'
-                    src_url = scr_scheme + "://" + src['src'].replace("//","")
+                    src_url = src["src"]
+                elif src["src"].startswith("//"):
+                    final_url = requests.head(
+                        url,
+                        headers=headers or {},
+                        proxies=proxies or {},
+                        allow_redirects=True,
+                    ).url
+                    scr_scheme = "https" if final_url.startswith("https://") else "http"
+                    src_url = scr_scheme + "://" + src["src"].replace("//", "")
                 else:
-                    src_url = base_url + src['src']
+                    src_url = base_url + src["src"]
 
                 logger.info(f"Downloading {src_url}")
-                if src.name == "script" or src.name == "style": 
-                    src_r = requests.get(src_url, headers=headers)
-                    del src['src']
+                if src.name == "script" or src.name == "style":
+                    src_r = requests.get(
+                        src_url, headers=headers or {}, proxies=proxies or {}
+                    )
+                    del src["src"]
                     src.string = src_r.text
 
-    with open('test.html', 'w', encoding='utf-8') as file:
+    with open("test.html", "w", encoding="utf-8") as file:
         file.write(soup.prettify())
 
-            
+
 if __name__ == "__main__":
     webonefile(
         "http://web.archive.org/web/20241118000048/https://google.com/",
