@@ -1,4 +1,4 @@
-import base64
+from base64 import b64encode
 from logging import getLogger, StreamHandler, Formatter, DEBUG, INFO
 from urllib.parse import urlparse
 
@@ -22,7 +22,7 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
     for src in soup.find_all(src=True):
         if src["src"]:
             src_parsed = urlparse(src["src"])
-            if (src_parsed.scheme and src_parsed.netloc) or src_parsed.path:
+            if (src_parsed.scheme and src_parsed.netloc) or src_parsed.path or src_parsed.scheme != "data":
                 if src_parsed.scheme and src_parsed.netloc:
                     src_url = src["src"]
                 elif src["src"].startswith("//"):
@@ -44,6 +44,16 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
                     )
                     del src["src"]
                     src.string = src_r.text
+                elif src.name == "iframe":
+                    pass
+                elif src.name in ["img"]:
+                    src_r = requests.get(
+                        src_url, headers=headers or {}, proxies=proxies or {}
+                    )
+
+                    mime_type = src_r.headers['Content-Type']
+                    b64_src = b64encode(src_r.content).decode('utf-8')
+                    src["src"] = f"data:{mime_type};base64,{b64_src}"
 
     with open("test.html", "w", encoding="utf-8") as file:
         file.write(soup.prettify())
@@ -51,7 +61,7 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
 
 if __name__ == "__main__":
     webonefile(
-        "http://web.archive.org/web/20241118000048/https://google.com/",
+        "https://github.com/",
         headers={
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "accept-language": "ja,en-US;q=0.9,en;q=0.8",
