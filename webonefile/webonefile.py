@@ -1,4 +1,5 @@
 from base64 import b64encode
+import os
 from logging import getLogger, StreamHandler, Formatter, DEBUG, INFO
 from urllib.parse import urlparse
 
@@ -38,22 +39,17 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
                     src_url = base_url + src["src"]
 
                 logger.info(f"Downloading {src_url}")
-                if src.name == "script" or src.name == "style":
-                    src_r = requests.get(
-                        src_url, headers=headers or {}, proxies=proxies or {}
-                    )
-                    del src["src"]
-                    src.string = src_r.text
-                elif src.name == "iframe":
-                    pass
-                elif src.name in ["img"]:
-                    src_r = requests.get(
-                        src_url, headers=headers or {}, proxies=proxies or {}
-                    )
 
+                b64_template = "data:%s/%s;base64,%s"
+                if src.name in ["img"]:
+                    src_r = requests.get(
+                        src_url, headers=headers or {}, proxies=proxies or {}
+                    )
+                    
+                    src_ext = os.path.splitext(src_parsed.path)[1][1:]
                     mime_type = src_r.headers['Content-Type']
                     b64_src = b64encode(src_r.content).decode('utf-8')
-                    src["src"] = f"data:{mime_type};base64,{b64_src}"
+                    src["src"] = b64_template % (mime_type, src_ext, b64_src)
 
     with open("test.html", "w", encoding="utf-8") as file:
         file.write(soup.prettify())
@@ -61,7 +57,7 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
 
 if __name__ == "__main__":
     webonefile(
-        "https://github.com/",
+        "https://google.co.jp",
         headers={
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "accept-language": "ja,en-US;q=0.9,en;q=0.8",
