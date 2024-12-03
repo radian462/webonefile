@@ -23,7 +23,7 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
     for src in soup.find_all(src=True):
         if src["src"]:
             src_parsed = urlparse(src["src"])
-            if (src_parsed.scheme and src_parsed.netloc) or src_parsed.path or src_parsed.scheme != "data":
+            if (src_parsed.scheme and src_parsed.netloc) or src_parsed.path and src_parsed.scheme != "data":
                 if src_parsed.scheme and src_parsed.netloc:
                     src_url = src["src"]
                 elif src["src"].startswith("//"):
