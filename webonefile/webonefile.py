@@ -20,47 +20,42 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
     r = requests.get(url, headers=headers or {}, proxies=proxies or {})
     soup = BeautifulSoup(r.text, "html.parser")
 
-    for src in soup.find_all(src=True):
-        if src["src"]:
-            src_parsed = urlparse(src["src"])
-            if (src_parsed.scheme and src_parsed.netloc) or src_parsed.path and src_parsed.scheme != "data":
-                if src_parsed.scheme and src_parsed.netloc:
-                    src_url = src["src"]
-                elif src["src"].startswith("//"):
-                    final_url = requests.head(
-                        url,
-                        headers=headers or {},
-                        proxies=proxies or {},
-                        allow_redirects=True,
-                    ).url
-                    scr_scheme = "https" if final_url.startswith("https://") else "http"
-                    src_url = scr_scheme + "://" + src["src"].replace("//", "")
-                else:
-                    src_url = base_url + src["src"]
+    resource_tags = soup.find_all(src=True)
 
-                logger.info(f"Downloading {src_url}")
+    for tag in resource_tags:
+        tag_parsed = urlparse(tag["src"])
+        if (tag_parsed.scheme and tag_parsed.netloc) or tag_parsed.path and tag_parsed.scheme != "data":
+            if tag_parsed.scheme and tag_parsed.netloc:
+                tag_url = tag["src"]
+            elif tag["src"].startswith("//"):
+                final_url = requests.head(
+                    url,
+                    headers=headers or {},
+                    proxies=proxies or {},
+                    allow_redirects=True,
+                ).url
+                scheme = "https" if final_url.startswith("https://") else "http"
+                tag_url = scheme + "://" + tag["src"].replace("//", "")
+            else:
+                tag_url = base_url + tag["src"]
 
-                b64_template = "data:%s/%s;base64,%s"
-                if src.name in ["img"]:
-                    src_r = requests.get(
-                        src_url, headers=headers or {}, proxies=proxies or {}
-                    )
+        if tag["src"]:
+            logger.info(f"Downloading {tag_url}")
+
+            b64_template = "data:%s/%s;base64,%s"
+            if tag.name in ["img"]:
+                src_r = requests.get(
+                    tag_url, headers=headers or {}, proxies=proxies or {}
+                )
                     
-                    src_ext = os.path.splitext(src_parsed.path)[1][1:]
-                    mime_type = src_r.headers['Content-Type']
-                    b64_src = b64encode(src_r.content).decode('utf-8')
-                    src["src"] = b64_template % (mime_type, src_ext, b64_src)
+                src_ext = os.path.splitext(tag_parsed.path)[1][1:]
+                mime_type = "image"
+                b64_src = b64encode(src_r.content).decode('utf-8')
+                tag["src"] = b64_template % (mime_type, src_ext, b64_src)
 
     with open("test.html", "w", encoding="utf-8") as file:
         file.write(soup.prettify())
 
 
 if __name__ == "__main__":
-    webonefile(
-        "https://google.co.jp",
-        headers={
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-            "accept-language": "ja,en-US;q=0.9,en;q=0.8",
-            "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
-        },
-    )
+    webonefile("https://google.co.jp")
