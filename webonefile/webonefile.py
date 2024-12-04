@@ -56,6 +56,15 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
                     mime_type = "image"
                     b64_src = b64encode(src_r.content).decode('utf-8')
                     tag["src"] = b64_template % (mime_type, src_ext, b64_src)
+                if tag.name in ["script"]:
+                    logger.info(f"Downloading {tag_url}")
+                    script_text = requests.get(
+                            tag_url, headers=headers or {}, proxies=proxies or {}
+                    ).text
+
+                    tag["src"] = script_text
+
+
         elif tag.name == "link":
             if "stylesheet" in tag.get('rel'):
                 if tag.get('href'):
@@ -66,12 +75,9 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
                 tag_url = resolve_url(origin_url)
                 
                 logger.info(f"Downloading {tag_url}")
-                css_r = requests.get(
+                css_text = requests.get(
                         tag_url, headers=headers or {}, proxies=proxies or {}
-                )
-                
-                css_r.raise_for_status() 
-                css_text = css_r.text
+                ).text
 
                 style_tag = soup.new_tag("style")
                 style_tag.string = css_text
@@ -83,4 +89,4 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
 
 
 if __name__ == "__main__":
-    webonefile("https://github.com")
+    webonefile("https://news.yahoo.co.jp/articles/124d1e196e86b669da5e33d0dd092a20554feb26")
