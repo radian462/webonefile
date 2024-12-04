@@ -24,7 +24,11 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
 
     for tag in resource_tags:
         tag_parsed = urlparse(tag["src"])
-        if (tag_parsed.scheme and tag_parsed.netloc) or tag_parsed.path and tag_parsed.scheme != "data":
+        if (
+            (tag_parsed.scheme and tag_parsed.netloc)
+            or tag_parsed.path
+            and tag_parsed.scheme != "data"
+        ):
             if tag_parsed.scheme and tag_parsed.netloc:
                 tag_url = tag["src"]
             elif tag["src"].startswith("//"):
@@ -47,10 +51,10 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
                 src_r = requests.get(
                     tag_url, headers=headers or {}, proxies=proxies or {}
                 )
-                    
+
                 src_ext = os.path.splitext(tag_parsed.path)[1][1:]
                 mime_type = "image"
-                b64_src = b64encode(src_r.content).decode('utf-8')
+                b64_src = b64encode(src_r.content).decode("utf-8")
                 tag["src"] = b64_template % (mime_type, src_ext, b64_src)
 
     with open("test.html", "w", encoding="utf-8") as file:
