@@ -27,7 +27,7 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
 
     def resolve_url(url: str) -> str:
         url_parsed = urlparse(url)
-        if url_parsed.scheme and url_parsed.scheme in ["data", "http", "https"]:
+        if (url_parsed.scheme and url_parsed.scheme in ["data", "http", "https"]) or url.startswith("#"):
             return url
         elif url.startswith("//"):
             return urlparse(base_url).scheme + ":" + url
@@ -83,4 +83,4 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
 
 
 if __name__ == "__main__":
-    webonefile("https://news.yahoo.co.jp")
+    webonefile("https://zenn.dev/radian462/articles/907966dde6cb9f")
