@@ -20,46 +20,67 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
     r = requests.get(url, headers=headers or {}, proxies=proxies or {})
     soup = BeautifulSoup(r.text, "html.parser")
 
-    resource_tags = soup.find_all(src=True)
+    resource_tags = soup.find_all(src=True) + soup.find_all("link")
 
-    for tag in resource_tags:
-        tag_parsed = urlparse(tag["src"])
-        if (
-            (tag_parsed.scheme and tag_parsed.netloc)
-            or tag_parsed.path
-            and tag_parsed.scheme != "data"
-        ):
-            if tag_parsed.scheme and tag_parsed.netloc:
-                tag_url = tag["src"]
-            elif tag["src"].startswith("//"):
-                final_url = requests.head(
+    def resolve_url(url:str) -> str:
+        url_parsed = urlparse(url)
+        if url_parsed.scheme and url_parsed.scheme in ['data','http','https']:
+            return url
+        elif url.startswith("//"):
+            final_url = requests.head(
                     url,
                     headers=headers or {},
                     proxies=proxies or {},
                     allow_redirects=True,
-                ).url
-                scheme = "https" if final_url.startswith("https://") else "http"
-                tag_url = scheme + "://" + tag["src"].replace("//", "")
-            else:
-                tag_url = base_url + tag["src"]
+            ).url
+            scheme = "https" if final_url.startswith("https://") else "http"
+            return_url = scheme + "://" + tag["src"].replace("//", "")
+            return return_url
+        else:
+            return base_url + url
 
-        if tag["src"]:
-            logger.info(f"Downloading {tag_url}")
+    for tag in resource_tags:
+        if tag.get('src'):
+            tag_url = resolve_url(tag['src'])
+            tag_parsed = urlparse(tag_url)
 
             b64_template = "data:%s/%s;base64,%s"
-            if tag.name in ["img"]:
-                src_r = requests.get(
-                    tag_url, headers=headers or {}, proxies=proxies or {}
-                )
+            if tag_parsed.scheme != "data":
+                if tag.name in ["img"]:
+                    logger.info(f"Downloading {tag_url}")
+                    src_r = requests.get(
+                        tag_url, headers=headers or {}, proxies=proxies or {}
+                    )
+                    
+                    src_ext = os.path.splitext(tag_parsed.path)[1][1:]
+                    mime_type = "image"
+                    b64_src = b64encode(src_r.content).decode('utf-8')
+                    tag["src"] = b64_template % (mime_type, src_ext, b64_src)
+        elif tag.name == "link":
+            if "stylesheet" in tag.get('rel'):
+                if tag.get('href'):
+                    origin_url = tag['href']
+                elif tag.get('data-href'):
+                    origin_url = tag['data-href']
 
-                src_ext = os.path.splitext(tag_parsed.path)[1][1:]
-                mime_type = "image"
-                b64_src = b64encode(src_r.content).decode("utf-8")
-                tag["src"] = b64_template % (mime_type, src_ext, b64_src)
+                tag_url = resolve_url(origin_url)
+                
+                logger.info(f"Downloading {tag_url}")
+                css_r = requests.get(
+                        tag_url, headers=headers or {}, proxies=proxies or {}
+                )
+                
+                css_r.raise_for_status() 
+                css_text = css_r.text
+
+                style_tag = soup.new_tag("style")
+                style_tag.string = css_text
+                tag.replace_with(style_tag)
+
 
     with open("test.html", "w", encoding="utf-8") as file:
         file.write(soup.prettify())
 
 
 if __name__ == "__main__":
-    webonefile("https://google.co.jp")
+    webonefile("https://github.com")
