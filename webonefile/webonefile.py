@@ -27,15 +27,7 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
         if url_parsed.scheme and url_parsed.scheme in ['data','http','https']:
             return url
         elif url.startswith("//"):
-            final_url = requests.head(
-                    url,
-                    headers=headers or {},
-                    proxies=proxies or {},
-                    allow_redirects=True,
-            ).url
-            scheme = "https" if final_url.startswith("https://") else "http"
-            return_url = scheme + "://" + tag["src"].replace("//", "")
-            return return_url
+            return urlparse(base_url).scheme + ":" + url
         else:
             return base_url + url
 
@@ -89,4 +81,4 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
 
 
 if __name__ == "__main__":
-    webonefile("https://news.yahoo.co.jp/articles/124d1e196e86b669da5e33d0dd092a20554feb26")
+    webonefile("https://news.yahoo.co.jp/")
