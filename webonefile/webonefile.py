@@ -30,7 +30,8 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
             return urlparse(base_url).scheme + ":" + url
         else:
             return base_url + url
-
+        
+    #リソース保存
     for tag in resource_tags:
         if tag.get('src'):
             tag_url = resolve_url(tag['src'])
@@ -75,10 +76,14 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
                 style_tag.string = css_text
                 tag.replace_with(style_tag)
 
+    #urlを絶対パス化
+    for tag in soup.find_all(href=True):
+        tag["href"] = resolve_url(tag["href"])
+
 
     with open("test.html", "w", encoding="utf-8") as file:
         file.write(soup.prettify())
 
 
 if __name__ == "__main__":
-    webonefile("https://news.yahoo.co.jp/")
+    webonefile("https://news.yahoo.co.jp")
