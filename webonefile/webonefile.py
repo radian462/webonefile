@@ -7,7 +7,9 @@ import requests
 from bs4 import BeautifulSoup
 
 
-def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
+def webonefile(
+    url: str, headers: dict = None, proxies: dict = None, ignore_robots: bool = True
+) -> str:
     headers = headers or {}
     proxies = proxies or {}
 
@@ -27,9 +29,41 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
 
     resource_tags = soup.find_all(src=True) + soup.find_all("link")
 
+    def get_robots() -> dict:
+        robots_rules = {}
+        robots = requests.get(
+            f"{ROOT_DIRECTORY}/robots.txt", headers=headers, proxies=proxies
+        )
+
+        if robots.status_code == 200:
+            for line in robots.text.split("\n"):
+                line = line.strip()
+
+                if not line or line.startswith("#"):
+                    continue
+
+                if line.lower().startswith("user-agent:"):
+                    user_agent = line.split(":", 1)[1].strip()
+                    robots_rules[user_agent] = {"Disallow": [], "Allow": []}
+                elif line.lower().startswith("disallow:"):
+                    path = line.split(":", 1)[1].strip()
+                    if user_agent and path:
+                        robots_rules[user_agent]["Disallow"].append(path)
+                elif line.lower().startswith("allow:"):
+                    path = line.split(":", 1)[1].strip()
+                    if user_agent and path:
+                        robots_rules[user_agent]["Allow"].append(path)
+
+            return robots_rules
+        else:
+            return {}
+
     def resolve_url(url: str) -> str:
         PARSED_RESOURCE = urlparse(url)
-        if (PARSED_RESOURCE.scheme and PARSED_RESOURCE.scheme in ["data", "http", "https"]) or url.startswith("#"):
+        if (
+            PARSED_RESOURCE.scheme
+            and PARSED_RESOURCE.scheme in ["data", "http", "https"]
+        ) or url.startswith("#"):
             return url
         elif url.startswith("//"):
             return f"{SCHEME}:{url}"
@@ -59,10 +93,9 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
                     script_text = requests.get(
                         tag_url, headers=headers, proxies=proxies
                     ).text
-                    
+
                     tag.string = script_text
-                    
-                    
+
         elif tag.name == "link":
             if "stylesheet" in tag.get("rel"):
                 if tag.get("href"):
@@ -88,4 +121,4 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
 
 
 if __name__ == "__main__":
-    webonefile("https://google.co.jp")
+    webonefile("https://zenn.dev/radian462/articles/907966dde6cb9f")
