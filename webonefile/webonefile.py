@@ -18,7 +18,10 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-    base_url = urlparse(url).scheme + "://" + urlparse(url).netloc
+    PARSED_URL = urlparse(url)
+    ROOT_DIRECTORY = PARSED_URL.scheme + "://" + PARSED_URL.netloc
+    SCHEME = PARSED_URL.scheme
+
 
     r = requests.get(url, headers=headers, proxies=proxies)
     soup = BeautifulSoup(r.text, "html.parser")
@@ -26,13 +29,12 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
     resource_tags = soup.find_all(src=True) + soup.find_all("link")
 
     def resolve_url(url: str) -> str:
-        url_parsed = urlparse(url)
-        if (url_parsed.scheme and url_parsed.scheme in ["data", "http", "https"]) or url.startswith("#"):
+        if (SCHEME and SCHEME in ["data", "http", "https"]) or url.startswith("#"):
             return url
         elif url.startswith("//"):
-            return urlparse(base_url).scheme + ":" + url
+            return SCHEME + ":" + url
         else:
-            return base_url + url
+            return ROOT_DIRECTORY + url
 
     # リソース保存
     for tag in resource_tags:
