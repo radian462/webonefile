@@ -1,4 +1,5 @@
 from base64 import b64encode
+import html
 import os
 from logging import getLogger, StreamHandler, Formatter, DEBUG, INFO
 from urllib.parse import urlparse
@@ -94,7 +95,8 @@ def webonefile(
                         tag_url, headers=headers, proxies=proxies
                     ).text
 
-                    tag.string = script_text
+                    escaped_script = html.escape(script_text)
+                    tag.string = escaped_script
 
         elif tag.name == "link":
             if "stylesheet" in tag.get("rel"):
