@@ -22,19 +22,21 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
     ROOT_DIRECTORY = PARSED_URL.scheme + "://" + PARSED_URL.netloc
     SCHEME = PARSED_URL.scheme
 
-
     r = requests.get(url, headers=headers, proxies=proxies)
     soup = BeautifulSoup(r.text, "html.parser")
 
     resource_tags = soup.find_all(src=True) + soup.find_all("link")
 
     def resolve_url(url: str) -> str:
-        if (SCHEME and SCHEME in ["data", "http", "https"]) or url.startswith("#"):
+        PARSED_RESOURCE = urlparse(url)
+        if (PARSED_RESOURCE.scheme and PARSED_RESOURCE.scheme in ["data", "http", "https"]) or url.startswith("#"):
             return url
         elif url.startswith("//"):
-            return SCHEME + ":" + url
+            return f"{SCHEME}:{url}"
+        elif url.startswith("/"):
+            return f"{ROOT_DIRECTORY}{url}"
         else:
-            return ROOT_DIRECTORY + url
+            return f"{ROOT_DIRECTORY}/{url}"
 
     # リソース保存
     for tag in resource_tags:
@@ -57,9 +59,10 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
                     script_text = requests.get(
                         tag_url, headers=headers, proxies=proxies
                     ).text
-
-                    tag["src"] = script_text
-
+                    
+                    tag.string = script_text
+                    
+                    
         elif tag.name == "link":
             if "stylesheet" in tag.get("rel"):
                 if tag.get("href"):
@@ -85,4 +88,4 @@ def webonefile(url: str, headers: dict = None, proxies: dict = None) -> str:
 
 
 if __name__ == "__main__":
-    webonefile("https://zenn.dev/radian462/articles/907966dde6cb9f")
+    webonefile("https://google.co.jp")
