@@ -86,33 +86,17 @@ common_suffix_map = {
     "video/ogg": "ogv",  # OGG video
     "video/webm": "webm",  # WEBM video
     "video/x-msvideo": "avi",  # AVI: Audio Video Interleave
+
+    # New content from here
+    "video/mp4": "mp4", # MP4 video
 }
 
-resource_type = {"img": "image", "audio": "audio"}
+resource_type = {"img": "image", "audio": "audio", "video": "video"}
 
 
 def webonefile(
     url: str, headers: dict = None, proxies: dict = None, ignore_robots: bool = True
 ) -> str:
-    headers = headers or {}
-    proxies = proxies or {}
-
-    logger = getLogger("Webonefile")
-    handler = StreamHandler()
-    logger.setLevel(INFO)
-    formatter = Formatter("[%(levelname)s] %(message)s - %(asctime)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-    PARSED_URL = urlparse(url)
-    ROOT_DIRECTORY = PARSED_URL.scheme + "://" + PARSED_URL.netloc
-    SCHEME = PARSED_URL.scheme
-
-    r = requests.get(url, headers=headers, proxies=proxies)
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    resource_tags = soup.find_all(src=True) + soup.find_all("link")
-
     # Fetch robots.txt
     def get_robots() -> dict:
         robots_rules = {}
@@ -157,26 +141,51 @@ def webonefile(
         else:
             return f"{ROOT_DIRECTORY}/{url}"
 
+    def make_b64(url: str) -> str:
+        b64_template = "data:%s/%s;base64,%s"
+        r = requests.get(url, headers=headers, proxies=proxies)
+
+        content_type = r.headers.get("Content-Type")
+        b64_src = b64encode(r.content).decode("utf-8")
+        return b64_template % (
+            resource_type.get(tag.name),
+            common_suffix_map[content_type],
+            b64_src,
+        )
+
+    headers = headers or {}
+    proxies = proxies or {}
+
+    logger = getLogger("Webonefile")
+    handler = StreamHandler()
+    logger.setLevel(INFO)
+    formatter = Formatter("[%(levelname)s] %(message)s - %(asctime)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    PARSED_URL = urlparse(url)
+    ROOT_DIRECTORY = PARSED_URL.scheme + "://" + PARSED_URL.netloc
+    SCHEME = PARSED_URL.scheme
+
+    r = requests.get(url, headers=headers, proxies=proxies)
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    resource_tags = (
+        soup.find_all(src=True) + soup.find_all(srcset=True) + soup.find_all("link")
+    )
+
     # Save resource
     for tag in resource_tags:
         if tag.get("src"):
             tag_url = resolve_url(tag["src"])
             tag_parsed = urlparse(tag_url)
 
-            b64_template = "data:%s/%s;base64,%s"
             if tag_parsed.scheme != "data":
                 if tag.name and tag.name in resource_type.keys():
                     logger.info(f"Downloading {tag_url}")
-                    src_r = requests.get(tag_url, headers=headers, proxies=proxies)
+                    tag["src"] = make_b64(tag_url)
 
-                    content_type = src_r.headers.get("Content-Type")
-                    b64_src = b64encode(src_r.content).decode("utf-8")
-                    tag["src"] = b64_template % (
-                        resource_type.get(tag.name),
-                        common_suffix_map[content_type],
-                        b64_src,
-                    )
-                if tag.name in ["script"]:
+                elif tag.name in ["script"]:
                     logger.info(f"Downloading {tag_url}")
                     script_text = requests.get(
                         tag_url, headers=headers, proxies=proxies
@@ -210,4 +219,4 @@ def webonefile(
 
 
 if __name__ == "__main__":
-    webonefile("https://zenn.dev/radian462/articles/907966dde6cb9f")
+    webonefile("https://zero-plus.io/media/html-video/")
