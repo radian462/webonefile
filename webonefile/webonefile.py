@@ -7,6 +7,87 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 
+# Quotation from https://github.com/rajatomar788/pywebcopy/blob/9f35b4b6a4da2125e70d8f7a21100de1f09012f4/pywebcopy/urls.py
+common_suffix_map = {
+    "application/epub+zip": "epub",  # Electronic publication (EPUB)
+    "application/javascript": "js",  # JavaScript module
+    "application/gzip": "gz",  # GZip Compressed Archive
+    "application/java-archive": "jar",  # Java Archive (JAR)
+    "application/json": "json",  # JSON format
+    "application/ld+json": "jsonld",  # JSON-LD format
+    "application/msword": "doc",  # Microsoft Word
+    "application/octet-stream": "bin",  # Any kind of binary data
+    "application/ogg": "ogx",  # OGG
+    "application/pdf": "pdf",  # Adobe Portable Document Format (PDF)
+    "application/php": "php",  # Hypertext Preprocessor (Personal Home Page)
+    "application/rtf": "rtf",  # Rich Text Format (RTF)
+    "application/vnd.amazon.ebook": "azw",  # Amazon Kindle eBook format
+    "application/vnd.apple.installer+xml": "mpkg",  # Apple Installer Package
+    "application/vnd.mozilla.xul+xml": "xul",  # XUL
+    "application/vnd.ms-excel": "xls",  # Microsoft Excel
+    "application/vnd.ms-fontobject": "eot",  # MS Embedded OpenType fonts
+    "application/vnd.ms-powerpoint": "ppt",  # Microsoft PowerPoint
+    "application/vnd.oasis.opendocument.presentation": "odp",  # OpenDocument presentation document
+    "application/vnd.oasis.opendocument.spreadsheet": "ods",  # OpenDocument spreadsheet document
+    "application/vnd.oasis.opendocument.text": "odt",  # OpenDocument text document
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+    # Microsoft PowerPoint (OpenXML)
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",  # Microsoft Excel (OpenXML)
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",  # Microsoft Word (OpenXML)
+    "application/vnd.rar": "rar",  # RAR archive
+    "application/vnd.visio": "vsd",  # Microsoft Visio
+    "application/x-7z-compressed": "7z",  # 7-zip archive
+    "application/x-abiword": "abw",  # AbiWord document
+    "application/x-bzip": "bz",  # BZip archive
+    "application/x-bzip2": "bz2",  # BZip2 archive
+    "application/x-csh": "csh",  # C-Shell script
+    "application/x-freearc": "arc",  # Archive document (multiple files embedded)
+    "application/x-sh": "sh",  # Bourne shell script
+    "application/x-shockwave-flash": "swf",  # Small web format (SWF) or Adobe Flash document
+    "application/x-tar": "tar",  # Tape Archive (TAR)
+    "application/xhtml+xml": "xhtml",  # XHTML
+    "application/xml": "xml",  # XML
+    "text/xml": "xml",  # XML
+    "application/zip": "zip",  # ZIP archive
+    "audio/aac": "aac",  # AAC audio
+    "audio/midi": "mid",  # Musical Instrument Digital Interface (MIDI)
+    "audio/x-midi": "midi",  # Musical Instrument Digital Interface (MIDI)
+    "audio/mpeg": "mp3",  # MP3 audio
+    "audio/ogg": "oga",  # OGG audio
+    "audio/opus": "opus",  # Opus audio
+    "audio/wav": "wav",  # Waveform Audio Format
+    "audio/webm": "weba",  # WEBM audio
+    "font/otf": "otf",  # OpenType font
+    "font/ttf": "ttf",  # TrueType Font
+    "font/woff": "woff",  # Web Open Font Format (WOFF)
+    "font/woff2": "woff2",  # Web Open Font Format (WOFF)
+    "image/bmp": "bmp",  # Windows OS/2 Bitmap Graphics
+    "image/gif": "gif",  # Graphics Interchange Format (GIF)
+    "image/jpeg": "jpeg",  # JPEG images
+    "image/jpg": "jpg",  # JPG images
+    "image/png": "png",  # Portable Network Graphics
+    "image/svg+xml": "svg",  # Scalable Vector Graphics (SVG)
+    "image/tiff": "tiff",  # Tagged Image File Format (TIFF)
+    "image/x-icon": "ico",  # Icon format
+    "image/vnd.microsoft.icon": "ico",  # Icon format
+    "image/webp": "webp",  # WEBP image
+    "text/calendar": "ics",  # iCalendar format
+    "text/css": "css",  # Cascading Style Sheets (CSS)
+    "text/csv": "csv",  # Comma-separated values (CSV)
+    "text/html": "html",  # HyperText Markup Language (HTML)
+    "text/javascript": "mjs",  # JavaScript module',
+    "text/plain": "txt",  # Text, (generally ASCII or ISO 8859-n)',
+    "video/3gpp": "3gp",  # 3GPP audio/video container',
+    "audio/3gpp": "3gp",  # 3GPP audio/video container',
+    "video/3gpp2": "3g2",  # 3GPP2 audio/video container'
+    "audio/3gpp2": "3g2",  # 3GPP2 audio/video container'
+    "video/mp2t": "ts",  # MPEG transport stream
+    "video/mpeg": "mpeg",  # MPEG Video
+    "video/ogg": "ogv",  # OGG video
+    "video/webm": "webm",  # WEBM video
+    "video/x-msvideo": "avi",  # AVI: Audio Video Interleave
+}
+
 
 def webonefile(
     url: str, headers: dict = None, proxies: dict = None, ignore_robots: bool = True
@@ -73,7 +154,7 @@ def webonefile(
         else:
             return f"{ROOT_DIRECTORY}/{url}"
 
-    # リソース保存
+    # Save resource
     for tag in resource_tags:
         if tag.get("src"):
             tag_url = resolve_url(tag["src"])
@@ -86,9 +167,9 @@ def webonefile(
                     src_r = requests.get(tag_url, headers=headers, proxies=proxies)
 
                     src_ext = os.path.splitext(tag_parsed.path)[1][1:]
-                    mime_type = "image"
+                    content_type = src_r.headers.get("Content-Type")
                     b64_src = b64encode(src_r.content).decode("utf-8")
-                    tag["src"] = b64_template % (mime_type, src_ext, b64_src)
+                    tag["src"] = b64_template % (common_suffix_map[content_type], src_ext, b64_src)
                 if tag.name in ["script"]:
                     logger.info(f"Downloading {tag_url}")
                     script_text = requests.get(
@@ -114,7 +195,7 @@ def webonefile(
                 style_tag.string = css_text
                 tag.replace_with(style_tag)
 
-    # urlを絶対パス化
+    # Convert URL to absolute path
     for tag in soup.find_all(href=True):
         tag["href"] = resolve_url(tag["href"])
 
