@@ -88,6 +88,8 @@ common_suffix_map = {
     "video/x-msvideo": "avi",  # AVI: Audio Video Interleave
 }
 
+resource_type = {"img": "image", "audio": "audio"}
+
 
 def webonefile(
     url: str, headers: dict = None, proxies: dict = None, ignore_robots: bool = True
@@ -111,6 +113,7 @@ def webonefile(
 
     resource_tags = soup.find_all(src=True) + soup.find_all("link")
 
+    # Fetch robots.txt
     def get_robots() -> dict:
         robots_rules = {}
         robots = requests.get(
@@ -162,14 +165,17 @@ def webonefile(
 
             b64_template = "data:%s/%s;base64,%s"
             if tag_parsed.scheme != "data":
-                if tag.name in ["img"]:
+                if tag.name and tag.name in resource_type.keys():
                     logger.info(f"Downloading {tag_url}")
                     src_r = requests.get(tag_url, headers=headers, proxies=proxies)
 
-                    src_ext = os.path.splitext(tag_parsed.path)[1][1:]
                     content_type = src_r.headers.get("Content-Type")
                     b64_src = b64encode(src_r.content).decode("utf-8")
-                    tag["src"] = b64_template % (common_suffix_map[content_type], src_ext, b64_src)
+                    tag["src"] = b64_template % (
+                        resource_type.get(tag.name),
+                        common_suffix_map[content_type],
+                        b64_src,
+                    )
                 if tag.name in ["script"]:
                     logger.info(f"Downloading {tag_url}")
                     script_text = requests.get(
