@@ -86,9 +86,8 @@ common_suffix_map = {
     "video/ogg": "ogv",  # OGG video
     "video/webm": "webm",  # WEBM video
     "video/x-msvideo": "avi",  # AVI: Audio Video Interleave
-
     # New content from here
-    "video/mp4": "mp4", # MP4 video
+    "video/mp4": "mp4",  # MP4 video
 }
 
 resource_type = {"img": "image", "audio": "audio", "video": "video"}
@@ -171,7 +170,10 @@ def webonefile(
     soup = BeautifulSoup(r.text, "html.parser")
 
     resource_tags = (
-        soup.find_all(src=True) + soup.find_all(srcset=True) + soup.find_all("link")
+        soup.find_all(src=True)
+        + soup.find_all(srcset=True)
+        + soup.find_all(attrs={"data-srcset": True})
+        + soup.find_all("link")
     )
 
     # Save resource
@@ -193,6 +195,15 @@ def webonefile(
 
                     escaped_script = html.escape(script_text)
                     tag.string = escaped_script
+
+        elif tag.get("srcset") or tag.get("data-srcset"):
+            attr = "srcset" if tag.get("srcset") else "data-srcset"
+            tag_url = resolve_url(tag[attr])
+            tag_parsed = urlparse(tag_url)
+
+            if tag_parsed.scheme != "data":
+                logger.info(f"Downloading {tag_url}")
+                tag[attr] = make_b64(tag_url)
 
         elif tag.name == "link":
             if "stylesheet" in tag.get("rel"):
@@ -219,4 +230,4 @@ def webonefile(
 
 
 if __name__ == "__main__":
-    webonefile("https://zero-plus.io/media/html-video/")
+    webonefile("https://www.w3schools.com/html/html5_video.asp")
