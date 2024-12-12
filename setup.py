@@ -4,7 +4,7 @@ import os
 here = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
 
 INSTALL_REQUIRES = []
-with open(os.path.join(here, 'requirements.txt')) as r:
+with open(os.path.join(here, "requirements.txt")) as r:
     for rq in r.readlines():
         INSTALL_REQUIRES.append(rq.strip("\n"))
 
@@ -40,7 +40,7 @@ setup(
     maintainer_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
-    long_description_content_type='text/markdown',
+    long_description_content_type="text/markdown",
     license=LICENSE,
     keywords=KEYWORDS,
     url=URL,

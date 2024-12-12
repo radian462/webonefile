@@ -2,10 +2,13 @@ from base64 import b64encode
 import html
 import os
 from logging import getLogger, StreamHandler, Formatter, DEBUG, INFO
+from traceback import format_exc
 from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
+
+from .exception import *
 
 # Quotation from https://github.com/rajatomar788/pywebcopy/blob/9f35b4b6a4da2125e70d8f7a21100de1f09012f4/pywebcopy/urls.py
 common_suffix_map = {
@@ -94,14 +97,17 @@ resource_type = {"img": "image", "audio": "audio", "video": "video"}
 
 
 def webonefile(
-    url: str, headers: dict = None, proxies: dict = None, ignore_robots: bool = True
+    url: str,
+    headers: dict = None,
+    proxies: dict = None,
+    ignore_robots: bool = True,
+    max_tries: int = 3,
+    debug: bool = False,
 ) -> str:
     # Fetch robots.txt
     def get_robots() -> dict:
         robots_rules = {}
-        robots = requests.get(
-            f"{ROOT_DIRECTORY}/robots.txt", headers=headers, proxies=proxies
-        )
+        robots = session.get(f"{ROOT_DIRECTORY}/robots.txt")
 
         if robots.status_code == 200:
             for line in robots.text.split("\n"):
@@ -142,7 +148,7 @@ def webonefile(
 
     def make_b64(url: str) -> str:
         b64_template = "data:%s/%s;base64,%s"
-        r = requests.get(url, headers=headers, proxies=proxies)
+        r = session.get(url)
 
         content_type = r.headers.get("Content-Type")
         b64_src = b64encode(r.content).decode("utf-8")
@@ -157,16 +163,32 @@ def webonefile(
 
     logger = getLogger("Webonefile")
     handler = StreamHandler()
-    logger.setLevel(INFO)
     formatter = Formatter("[%(levelname)s] %(message)s - %(asctime)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+
+    if debug == True:
+        logger.setLevel(DEBUG)
+    else:
+        logger.setLevel(INFO)
 
     PARSED_URL = urlparse(url)
     ROOT_DIRECTORY = PARSED_URL.scheme + "://" + PARSED_URL.netloc
     SCHEME = PARSED_URL.scheme
 
-    r = requests.get(url, headers=headers, proxies=proxies)
+    session = requests.Session()
+    session.headers.update(headers)
+    session.proxies.update(proxies)
+
+    for i in range(max_tries):
+        try:
+            r = session.get(url)
+            break
+        except Exception as e:
+            logger.debug(f"Attempt {i + 1} failed\n{format_exc()}")
+            if i + 1 == max_tries:
+                raise RetryLimitExceededError(format_exc())
+
     soup = BeautifulSoup(r.text, "html.parser")
 
     resource_tags = (
@@ -185,16 +207,28 @@ def webonefile(
             if tag_parsed.scheme != "data":
                 if tag.name and tag.name in resource_type.keys():
                     logger.info(f"Downloading {tag_url}")
-                    tag["src"] = make_b64(tag_url)
+                    for i in range(max_tries):
+                        try:
+                            tag["src"] = make_b64(tag_url)
+                            break
+                        except Exception as e:
+                            logger.debug(f"Attempt {i + 1} failed\n{format_exc()}")
+                            if i + 1 == max_tries:
+                                raise RetryLimitExceededError(format_exc())
 
                 elif tag.name in ["script"]:
                     logger.info(f"Downloading {tag_url}")
-                    script_text = requests.get(
-                        tag_url, headers=headers, proxies=proxies
-                    ).text
+                    for i in range(max_tries):
+                        try:
+                            script_text = session.get(tag_url).text
 
-                    escaped_script = html.escape(script_text)
-                    tag.string = escaped_script
+                            escaped_script = html.escape(script_text)
+                            tag.string = escaped_script
+                            break
+                        except Exception as e:
+                            logger.debug(f"Attempt {i + 1} failed\n{format_exc()}")
+                            if i + 1 == max_tries:
+                                raise RetryLimitExceededError(format_exc())
 
         elif tag.get("srcset") or tag.get("data-srcset"):
             attr = "srcset" if tag.get("srcset") else "data-srcset"
@@ -203,7 +237,14 @@ def webonefile(
 
             if tag_parsed.scheme != "data":
                 logger.info(f"Downloading {tag_url}")
-                tag[attr] = make_b64(tag_url)
+                for i in range(max_tries):
+                    try:
+                        tag[attr] = make_b64(tag_url)
+                        break
+                    except Exception as e:
+                        logger.debug(f"Attempt {i + 1} failed\n{format_exc()}")
+                        if i + 1 == max_tries:
+                            raise RetryLimitExceededError(format_exc())
 
         elif tag.name == "link":
             if "stylesheet" in tag.get("rel"):
@@ -215,7 +256,14 @@ def webonefile(
                 tag_url = resolve_url(origin_url)
 
                 logger.info(f"Downloading {tag_url}")
-                css_text = requests.get(tag_url, headers=headers, proxies=proxies).text
+                for i in range(max_tries):
+                    try:
+                        css_text = session.get(tag_url).text
+                        break
+                    except Exception as e:
+                        logger.debug(f"Attempt {i + 1} failed\n{format_exc()}")
+                        if i + 1 == max_tries:
+                            raise RetryLimitExceededError(format_exc())
 
                 style_tag = soup.new_tag("style")
                 style_tag.string = css_text
