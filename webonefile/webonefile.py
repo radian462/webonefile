@@ -1,7 +1,7 @@
 from base64 import b64encode
 import html
-import os
 from logging import getLogger, StreamHandler, Formatter, DEBUG, INFO
+import time
 from traceback import format_exc
 from urllib.parse import urlparse
 
@@ -98,9 +98,10 @@ resource_type = {"img": "image", "audio": "audio", "video": "video"}
 
 def webonefile(
     url: str,
-    headers: dict = None,
-    proxies: dict = None,
+    headers: dict | None = None,
+    proxies: dict | None = None,
     ignore_robots: bool = True,
+    cool_times: float | None = None,
     max_tries: int = 3,
     debug: bool = False,
 ) -> str:
@@ -160,6 +161,9 @@ def webonefile(
 
     headers = headers or {}
     proxies = proxies or {}
+
+    if cool_times is None:
+        cool_times = 0
 
     logger = getLogger("Webonefile")
     handler = StreamHandler()
@@ -268,6 +272,8 @@ def webonefile(
                 style_tag = soup.new_tag("style")
                 style_tag.string = css_text
                 tag.replace_with(style_tag)
+
+        time.sleep(cool_times)
 
     # Convert URL to absolute path
     for tag in soup.find_all(href=True):
