@@ -8,6 +8,10 @@ with open(os.path.join(here, "requirements.txt")) as r:
     for rq in r.readlines():
         INSTALL_REQUIRES.append(rq.strip("\n"))
 
+EXTRAS_REQUIRE = {
+    'browser': ['playwright'],
+}
+
 DESCRIPTION = "A library for downloading a website into a single file"
 NAME = "webonefile"
 AUTHOR = "radian462"
@@ -48,6 +52,7 @@ setup(
     download_url=DOWNLOAD_URL,
     python_requires=PYTHON_REQUIRES,
     install_requires=INSTALL_REQUIRES,
+    extras_require=EXTRAS_REQUIRE,
     packages=PACKAGES,
     classifiers=CLASSIFIERS,
 )
