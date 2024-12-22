@@ -201,14 +201,20 @@ class HTTPClient:
 
         for i in range(max_tries):
             try:
-                r = self.session.get(url)
+                if self.browser:
+                    page = self.browser.new_page()
+                    page.goto(url, wait_until="networkidle", timeout=30000)
+                    page_html = page.content()
+                else:
+                    r = self.session.get(url)
+                    page_html = r.text
                 break
             except Exception as e:
                 self.logger.debug(f"Attempt {i + 1} failed\n{format_exc()}")
                 if i + 1 == max_tries:
                     raise RetryLimitExceededError(format_exc())
 
-        soup = BeautifulSoup(r.text, "html.parser")
+        soup = BeautifulSoup(page_html, "html.parser")
 
         resource_tags = (
             soup.find_all(src=True)
