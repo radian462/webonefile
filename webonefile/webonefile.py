@@ -5,20 +5,32 @@ import time
 from traceback import format_exc
 from urllib.parse import urlparse
 
-import requests
 from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
+import requests
 
 from .exception import RetryLimitExceededError
 
 
 class HTTPClient:
-    def __init__(self) -> None:
+    def __init__(
+        self, browser: bool = False, browser_type: str = "chromium", debug: bool = False
+    ) -> None:
         self.logger = getLogger("Webonefile")
         handler = StreamHandler()
         formatter = Formatter("[%(levelname)s] %(message)s - %(asctime)s")
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
         self.logger.setLevel(INFO)
+
+        if browser_type not in ["chromium", "firefox", "webkit"]:
+            raise ValueError("browser_type should be 'chromium', 'firefox' or 'webkit'")
+
+        if browser:
+            self.browser_type = browser_type
+            self.playwright = sync_playwright().start()
+            self.browser = getattr(self.playwright, self.browser_type).launch()
+            self.logger.debug("Browser launch")
 
         # Quotation from https://github.com/rajatomar788/pywebcopy/blob/9f35b4b6a4da2125e70d8f7a21100de1f09012f4/pywebcopy/urls.py
         self.common_suffix_map = {
@@ -98,6 +110,7 @@ class HTTPClient:
             "video/ogg": "ogv",  # OGG video
             "video/webm": "webm",  # WEBM video
             "video/x-msvideo": "avi",  # AVI: Audio Video Interleave
+            # New content from here
             "video/mp4": "mp4",  # MP4 video
         }
 
@@ -218,7 +231,9 @@ class HTTPClient:
                                 tag["src"] = make_b64(tag_url)
                                 break
                             except Exception as e:
-                                self.logger.debug(f"Attempt {i + 1} failed\n{format_exc()}")
+                                self.logger.debug(
+                                    f"Attempt {i + 1} failed\n{format_exc()}"
+                                )
                                 if i + 1 == max_tries:
                                     raise RetryLimitExceededError(format_exc())
 
@@ -232,7 +247,9 @@ class HTTPClient:
                                 tag.string = escaped_script
                                 break
                             except Exception as e:
-                                self.logger.debug(f"Attempt {i + 1} failed\n{format_exc()}")
+                                self.logger.debug(
+                                    f"Attempt {i + 1} failed\n{format_exc()}"
+                                )
                                 if i + 1 == max_tries:
                                     raise RetryLimitExceededError(format_exc())
 
@@ -283,4 +300,3 @@ class HTTPClient:
 
         with open("test.html", "w", encoding="utf-8") as file:
             file.write(soup.prettify())
-
