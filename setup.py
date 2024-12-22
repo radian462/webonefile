@@ -9,7 +9,7 @@ with open(os.path.join(here, "requirements.txt")) as r:
         INSTALL_REQUIRES.append(rq.strip("\n"))
 
 EXTRAS_REQUIRE = {
-    'browser': ['playwright'],
+    "browser": ["playwright"],
 }
 
 DESCRIPTION = "A library for downloading a website into a single file"

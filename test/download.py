@@ -1,3 +1,4 @@
-from webonefile import webonefile
+import webonefile
 
-webonefile("https://zenn.dev")
+browser = webonefile.browser()
+browser.webonefile("https://zenn.dev")
