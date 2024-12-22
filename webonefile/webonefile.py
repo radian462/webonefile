@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from .exception import RetryLimitExceededError
 
 
-class browser:
+class HTTPClient:
     def __init__(self) -> None:
         self.logger = getLogger("Webonefile")
         handler = StreamHandler()
