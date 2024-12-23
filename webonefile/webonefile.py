@@ -14,7 +14,7 @@ from .exception import RetryLimitExceededError
 
 class HTTPClient:
     def __init__(
-        self, browser: bool = False, browser_type: str = "chromium", debug: bool = False
+        self, browser: str | None = None, debug: bool = False
     ) -> None:
         self.logger = getLogger("Webonefile")
         handler = StreamHandler()
@@ -23,14 +23,16 @@ class HTTPClient:
         self.logger.addHandler(handler)
         self.logger.setLevel(INFO)
 
-        if browser_type not in ["chromium", "firefox", "webkit"]:
-            raise ValueError("browser_type should be 'chromium', 'firefox' or 'webkit'")
+        if browser not in [None, "chromium", "firefox", "webkit"]:
+            raise ValueError("browser_type should be None, 'chromium', 'firefox' or 'webkit'")
 
         if browser:
-            self.browser_type = browser_type
+            self.browser_type = browser
             self.playwright = sync_playwright().start()
             self.browser = getattr(self.playwright, self.browser_type).launch()
             self.logger.debug("Browser launch")
+        else:
+            self.browser = None
 
         # Quotation from https://github.com/rajatomar788/pywebcopy/blob/9f35b4b6a4da2125e70d8f7a21100de1f09012f4/pywebcopy/urls.py
         self.common_suffix_map = {
