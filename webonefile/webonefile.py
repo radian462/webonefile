@@ -175,10 +175,11 @@ class HTTPClient:
             r = self.session.get(url)
 
             content_type = r.headers.get("Content-Type")
+            formatted_content_type = content_type.split(";")[0]
             b64_src = b64encode(r.content).decode("utf-8")
             return b64_template % (
                 self.resource_type.get(tag.name),
-                self.common_suffix_map[content_type],
+                self.common_suffix_map.get(formatted_content_type),
                 b64_src,
             )
 
