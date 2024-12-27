@@ -228,7 +228,7 @@ class HTTPClient:
 
         # Save resource
         for tag in resource_tags:
-            if tag.get("src"):
+            if tag.get("src", []):
                 tag_url = resolve_url(tag["src"])
                 tag_parsed = urlparse(tag_url)
 
@@ -262,7 +262,7 @@ class HTTPClient:
                                 if i + 1 == max_tries:
                                     raise RetryLimitExceededError(format_exc())
 
-            elif tag.get("srcset") or tag.get("data-srcset"):
+            elif tag.get("srcset", []) or tag.get("data-srcset", []):
                 attr = "srcset" if tag.get("srcset") else "data-srcset"
                 tag_url = resolve_url(tag[attr])
                 tag_parsed = urlparse(tag_url)
@@ -279,7 +279,7 @@ class HTTPClient:
                                 raise RetryLimitExceededError(format_exc())
 
             elif tag.name == "link":
-                if "stylesheet" in tag.get("rel"):
+                if "stylesheet" in tag.get("rel", []):
                     if tag.get("href"):
                         origin_url = tag["href"]
                     elif tag.get("data-href"):
